@@ -1,0 +1,2 @@
+For Rep 2, the illiterate network was trained only for 67 epochs
+and that epoch is renamed to 79 for ease of analysing the data.
