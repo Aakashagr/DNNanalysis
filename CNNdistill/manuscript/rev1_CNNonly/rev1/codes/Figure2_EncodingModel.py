@@ -10,12 +10,10 @@ from matplotlib import pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42
 
 import torch
-from scipy.io import loadmat
 import os
 import torchvision.transforms as transforms
 import string
 from sklearn.linear_model import LassoCV
-from scipy import stats
 from torchvision import datasets
 from clean_cornets import CORNet_Z_nonbiased_words
 
@@ -28,10 +26,7 @@ transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]),}
 
 chosen_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), transform =  transform[x]) for x in ['train']}
 dataloaders = {x: torch.utils.data.DataLoader(chosen_datasets[x], batch_size = 80,shuffle = False) for x in ['train']}
-
 wordlist = chosen_datasets['train'].classes
-
-#%%
 dataiter = iter(dataloaders['train'])
 
 net = CORNet_Z_nonbiased_words()
@@ -41,15 +36,11 @@ for key in list(checkpoint.keys()):
         checkpoint[key.replace('module.', '')] = checkpoint[key]
         del checkpoint[key]
 net.load_state_dict(checkpoint)
-# net.eval()
 
 nBli = {}; nBli['it'] = []; nBli['h'] = []; nBli['v4'] = []; nBli['v1'] = []
 for i in range(100):
     stimtemp, classes = next(dataiter)
-    # nBli['v1'], nBli['v2'], nBli['v4'], nBli['it'], nBli['h'],  nBli['out'] = net(stimtemp.float())
     varv1,varv2,varv4,varIt,varh, _ = net(stimtemp.float())
-    # nBli['v1'].extend(varv1.detach().numpy())
-    # nBli['it'].extend(varIt.detach().numpy())
     nBli['h'].extend(varh.detach().numpy())
     print(i)
 
@@ -82,17 +73,16 @@ for i, seq in enumerate(stimword):
             Xmat[i,pid] += 1
 
 
-##### Initializing variables
+# Initializing variables
 rfit = np.zeros(len(wordSelUnit))
 coefMat = np.zeros((len(wordSelUnit), 26*8))
 
-##################################################### Model fitting
+# Model fitting
 for npc in np.arange(len(wordSelUnit)):
     if np.var(out[:,npc]) < 0.01:
         print('ignored id: ' + str(npc))
     else:             
         reg = LassoCV(cv=5, random_state=0,max_iter=10000, n_jobs = -1).fit(Xmat, out[:,npc])
-        # reg = RidgeCV(cv=5).fit(Xmat, out[:,npc])
         corrval,pval = scipy.stats.pearsonr(Xmat@reg.coef_, out[:,npc])
         rfit[npc] = corrval**2
         coefMat[npc,:] = reg.coef_
@@ -103,7 +93,7 @@ plt.hist(rfit)
 plt.xlabel('Model fit score R2, v1')
 plt.ylabel('# of units')
 
-#%%
+#%% Figure 2C
 nws = np.shape(coefMat)[0]
 meancoef = np.zeros((nws,8))
 for i in range(nws):
@@ -131,7 +121,7 @@ for i in range(nws):
 import pickle
 with open('mean_coeff_h.pkl', 'wb') as f:
  	pickle.dump([meancoeff, rfit], f)
-#%% plotting the receptive field
+#%% plotting the receptive field for all word selective units
 os.makedirs('plots/model_coef_'+layer+'/', exist_ok= True)
 
 if 1:
@@ -160,65 +150,3 @@ if 1:
 	    
 	    fig.savefig('plots/model_coef_'+layer+'/' +str(bias) + '.png')
 	    plt.close(fig)
-	
-	
-#%% Match to behaviour dissimilarity
-from scipy.io import loadmat
-from scipy.spatial.distance import pdist
-dis_u = loadmat('dis_uletter.mat')['dis_uletter']
-dis_l = loadmat('dis_lletter.mat')['dis_lletter']
-dis_beh = (dis_u + dis_l)/2
-
-
-avgcoef = []
-for i in range(len(wordSelUnit)):
-    avgcoef.append(np.mean(np.reshape(coefMat[i,:],[26,8]),1))
-    # avgcoef.append(np.reshape(coefMat[i,:],[26,8])[:,7])
-
-
-avgcoef = np.array(avgcoef).T
-neudis = pdist(avgcoef, metric = 'cosine')
-               
-plt.figure()
-plt.scatter(dis_beh, neudis)
-r,p = stats.spearmanr(dis_beh, neudis, nan_policy = 'omit')
-plt.title('Corr. coef = ' + str(r.round(2))+ ', p = '+ str(p.round(3)))
-plt.ylabel('Estimated dissimilarity'); plt.xlabel('Behaviour dissimilarity')
-
-
-#%% Match to behaviour for each position
-rval = []
-for Pid in range(8):
-    avgcoef = []
-    for i in range(len(wordSelUnit)):
-        avgcoef.append(np.reshape(coefMat[i,:],[26,8])[:,Pid])
-    
-    avgcoef = np.array(avgcoef).T
-    neudis = pdist(avgcoef, metric = 'cosine')                   
-    r,p = stats.spearmanr(dis_beh, neudis, nan_policy = 'omit')
-    rval.append(r)
-
-
-plt.figure()
-plt.bar(range(8),rval)
-plt.xticks(range(8), labels = ['1','2','3','4','5','6','7','8'])
-plt.ylabel('Correlation Coefficient')
-plt.xlabel('Position')
-plt.title('Match to behaviour letter dissimilarity')
-
-#%% Match to behaviour for each unit
-rval = []
-for i in range(len(wordSelUnit)):
-    avgcoef = np.zeros((26,2))
-    avgcoef[:,0] = (np.mean(np.reshape(coefMat[i,:],[26,8]),1))
-
-    neudis = pdist(avgcoef, metric = 'euclidean')                   
-    r,p = stats.spearmanr(dis_beh, neudis)
-    rval.append(r)
-    
-plt.figure()
-plt.hist(rval)
-plt.xlabel('Correlation Coefficient')
-plt.ylabel('Counts')
-plt.title('Match to behaviour for each unit')
-

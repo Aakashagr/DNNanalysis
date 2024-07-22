@@ -39,20 +39,20 @@ net.load_state_dict(checkpoint)
 stimtemp, classes = next(dataiter)
 nBli['v1'], nBli['v2'], nBli['v4'], nBli['it'], nBli['h'],  nBli['out'] = net(stimtemp.float())
 
-#%%
+#%% plotting only the filter with maximum response
 
 unitid = []
 unitid.append(np.floor(np.argmax(nBli['v1'].detach().numpy(),1)/(56*56)))
 unitid.append(np.floor(np.argmax(nBli['v2'].detach().numpy(),1)/(28*28)))
 unitid.append(np.floor(np.argmax(nBli['v4'].detach().numpy(),1)/196))
 unitid.append(np.floor(np.argmax(nBli['it'].detach().numpy(),1)/49))
-# unitid.append(np.floor(np.argmax(nBli['out'].detach().numpy(),1)))
-unitid.append(['air','pain','square'])
+unitid.append(['air','pain','square']) # stim category (assuming correct classification)
 
 print(unitid)
 
 
-#%%
+#%% Plotting the data
+positive = 1
 fig, axes = plt.subplots(3, 5, figsize=(20, 10))
 
 for i,name in enumerate(['V1','V2','V4','IT','output']):
@@ -63,8 +63,12 @@ for i,name in enumerate(['V1','V2','V4','IT','output']):
 		else:			
 			image = plt.imread('plots/Activation_maximization_lucent/rep0/literate/AM_'+
 						 name+'/'+str(int(unitid[i][j])).zfill(3) +'.png')
-	
-		image = image[:,:224,:]
+		
+		if positive: 
+			image = image[:,224:,:] # Positive direction
+		else:
+			image = image[:,:224,:] # Negative direction
+			
 		axes[j,i].imshow(image); 
 		axes[j,i].axis('off')
 

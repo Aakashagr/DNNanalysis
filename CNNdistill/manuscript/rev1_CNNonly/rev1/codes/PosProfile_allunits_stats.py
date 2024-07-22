@@ -2,6 +2,8 @@
 """
 Created on Fri Jun  2 12:57:42 2023
 
+Estimate the percentage of units that encode edge position 
+
 @author: Aakash
 """
 
@@ -25,9 +27,7 @@ for key in list(checkpoint.keys()):
 		del checkpoint[key]
 net.load_state_dict(checkpoint)
 
-# layer = 'h'
 for layer in ['v2','v4','it','h']:
-# for z in range(1):	
 	with open('WSunits/rep0/WSunits_lit_'+layer+'.pkl', 'rb') as f:
 	 	wordSelUnit = pickle.load(f)
 	
@@ -50,7 +50,6 @@ for layer in ['v2','v4','it','h']:
 		for i in range(1):
 			stimtemp, classes = next(dataiter)
 			nBli['v1'], nBli['v2'], nBli['v4'], nBli['it'], nBli['h'], _ = net(stimtemp.float())
-	# 		varv1,varv2,varv4,varit,varh, varOut = net(stimtemp.float())
 	
 		Rrel = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
 		Arel = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4]

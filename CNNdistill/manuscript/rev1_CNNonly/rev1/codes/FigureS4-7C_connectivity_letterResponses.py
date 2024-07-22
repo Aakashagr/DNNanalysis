@@ -2,6 +2,9 @@
 """
 Created on Sat Oct 28 09:48:20 2023
 
+The word selective units for which the responses needs to be generated should be 
+uncommented manually and also the filename to save the figure. 
+
 @author: Aakash
 """
 
@@ -17,9 +20,9 @@ from clean_cornets import CORNet_Z_nonbiased_words
 from torchvision import datasets
 import pickle
 
-layer = 'v2'
-#%%
+#%% Loading relevant word selective units
 
+layer = 'v2'
 with open('WSunits/rep0/WSunits_lit_'+layer+'.pkl', 'rb') as f:
  	wordSelUnit = pickle.load(f)
 
@@ -39,6 +42,9 @@ with open('WSunits/rep0/WSunits_lit_'+layer+'.pkl', 'rb') as f:
 wordSelUnit = [63157,63178,63179,78018,78045,78046, 8214,8215,8216,51390,51391,51392]
 # wordSelUnit = [87461,87482,87483,8214,8215,8216, 78018,78045,78046,41198,41199,41227]
 
+
+#%% Extracting CNN activations
+
 data_dir = 'stimuli/PosTuning_letters/'
 transform = {'train': transforms.Compose([transforms.Resize((224,224)),
 transforms.ToTensor(),
@@ -46,8 +52,6 @@ transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]),}
 
 chosen_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), transform =  transform[x]) for x in ['train']}
 dataloaders = {x: torch.utils.data.DataLoader(chosen_datasets[x], batch_size = 200,shuffle = False) for x in ['train']}
-	
-	#%%
 dataiter = iter(dataloaders['train'])
 
 nBli = {}; nBli['it'] = []; nBli['h'] = []; nBli['v4'] = []; nBli['v2'] = []
@@ -62,15 +66,13 @@ net.load_state_dict(checkpoint)
 
 for i in range(2):
 	stimtemp, classes = next(dataiter)
-	# nBli['v1'], nBli['v2'], nBli['v4'], nBli['it'], nBli['h'],  nBli['out'] = net(stimtemp.float())
 	varv1,varv2,varv4,varit,varh, varOut = net(stimtemp.float())
 	nBli['v2'].extend(varv2.detach().numpy())
 	nBli['v4'].extend(varv4.detach().numpy())
 	nBli['h'].extend(varh.detach().numpy())
 	nBli['it'].extend(varit.detach().numpy())
 	
-#%%
-
+#%% Plotting the data
 	
 fig, axs = plt.subplots(2,6, figsize=(30,20), facecolor='w', edgecolor='k')
 axs = axs.ravel();	

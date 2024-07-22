@@ -15,16 +15,6 @@ import torchvision.transforms as transforms
 from clean_cornets import CORNet_Z_nonbiased_words
 from torchvision import datasets
 import pickle
-#%%
-
-net = CORNet_Z_nonbiased_words()
-checkpoint = torch.load('models/save_lit_no_bias_z_79_full_nomir.pth.tar',map_location ='cpu')['state_dict']
-for key in list(checkpoint.keys()):
-	if 'module.' in key:
-		checkpoint[key.replace('module.', '')] = checkpoint[key]
-		del checkpoint[key]
-net.load_state_dict(checkpoint)
-net.eval()
 
 #%% Identifying word selective units
 
@@ -37,7 +27,7 @@ with open('WSunits/rep0/WSunits_lit_v1.pkl', 'rb') as f:
 #%% Top response inputs to the V2 layer
 
 lidx = 5110
-# lidx = 7459
+# lidx = 7487
 qunit = np.where(np.array(wordSelUnit) == lidx)[0][0]+1
 
 folderid = 'WSunit_' + str(qunit).zfill(3)
@@ -49,8 +39,16 @@ transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]),}
 chosen_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), transform =  transform[x]) for x in [folderid]}
 dataloaders = {x: torch.utils.data.DataLoader(chosen_datasets[x], batch_size = 200,shuffle = False) for x in [folderid]}
 dataiter = iter(dataloaders[folderid])
-
 stimtemp, classes = next(dataiter)
+
+net = CORNet_Z_nonbiased_words()
+checkpoint = torch.load('models/save_lit_no_bias_z_79_full_nomir.pth.tar',map_location ='cpu')['state_dict']
+for key in list(checkpoint.keys()):
+	if 'module.' in key:
+		checkpoint[key.replace('module.', '')] = checkpoint[key]
+		del checkpoint[key]
+net.load_state_dict(checkpoint)
+net.eval()
 varv1,varv2,varv4,varit,varh, varOut = net(stimtemp.float())
 v1resp = np.max(varv1[:20,:].detach().numpy(),axis = 0)
 
@@ -89,9 +87,8 @@ for i in range(nfilt):
 	peak_resp[i] = max(v1resp[qindex])
 	
 top_inp = np.argsort(-wnorm*peak_resp)[:5]
-bot_inp = np.flip(np.argsort(-wnorm*peak_resp)[-5:])
 
-
+#%% Figure S8
 # fig, axes = plt.subplots(8, 8, figsize=(10,10))
 # for i, ax in enumerate(axes.flat):
 #  	qtemp = np.transpose(weights_v1[i,:,:,:],[2,1,0])
@@ -103,7 +100,7 @@ bot_inp = np.flip(np.argsort(-wnorm*peak_resp)[-5:])
 # fig.savefig('plots/connectivity/v1filter.pdf')
 
 	
-#%
+#%%
 nsize = {}; nsize['v1'] = 56*56; nsize['v2'] = 784; nsize['v4'] = 196; nsize['it'] = 49; 
 sunit = lidx//nsize['v2']
 
@@ -119,27 +116,6 @@ for i, ax in enumerate(axes.flat):
 	else:
 		imid = i-num_images
 		image = np.transpose(weights_v1[top_inp[imid],:,:,:],[2,1,0])
-		image = image - min(image.flatten())
-		image = image/max(image.flatten())
-		ax.imshow(image); ax.axis('off')
-
-plt.tight_layout()
-plt.show()
-# fig.savefig('plots/connectivity/v2_'+str(lidx)+ '_pos.pdf')
-plt.close(fig)
-
-
-# Inhibitory inputs
-fig, axes = plt.subplots(rows, columns, figsize=(5, 2))
-# Iterate through the images and plot them in the subplots
-maxval = weights[sunit,list(bot_inp),:,:].max().tolist()
-for i, ax in enumerate(axes.flat):
-	if i < num_images:
-		ax.imshow(weights[sunit,bot_inp[i],:,:], cmap = 'bwr',vmin=-maxval, vmax=maxval);
-		ax.axis("off")  # Turn off axis labels
-	else:
-		imid = i-num_images
-		image = np.transpose(weights_v1[bot_inp[imid],:,:,:],[2,1,0])
 		image = image - min(image.flatten())
 		image = image/max(image.flatten())
 		ax.imshow(image); ax.axis('off')
